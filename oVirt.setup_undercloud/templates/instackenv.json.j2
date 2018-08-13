@@ -1,0 +1,24 @@
+{
+    "nodes": [
+{% for current_vm in osp_vms %}
+        {
+            "name":"{{ current_vm.name }}",
+            "pm_type":"staging-ovirt",
+            "mac":[
+                "{{ current_vm.nics[0].mac.address }}"
+            ],
+            "cpu":"{{ current_vm.cpu.topology.cores }}",
+            "memory":"{{ current_vm.memory // 1024 // 1024 }}",
+            "disk":"{{ current_vm.disk.provisioned_size // 1024 // 1024 // 1024 }}",
+            "arch":"{{ current_vm.cpu.architecture }}",
+            "pm_user":"{{ engine_user }}",
+            "pm_password":"{{ engine_password }}",
+            "pm_addr":"rhvm.field.lab.eng.rdu.redhat.com",
+            "pm_vm_name":"{{ current_vm.name }}",
+            "ovirt_vm_name":"{{ current_vm.name }}",
+            "capabilities":"profile:control,boot_option:local"
+        }{% if not loop.last %},{% endif %}
+
+{% endfor %}
+   ]
+}

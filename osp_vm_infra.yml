@@ -1,0 +1,169 @@
+---
+- name: oVirt infra
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+          #    engine_url: https://my.rhvm.fqdn/ovirt-engine/api
+          #    engine_user: admin@internal
+          #    engine_password: changeMe
+    local_interface: eth1
+
+    undercloud_vm:
+      cluster: Default
+      template: "{{ rhel_template }}"
+      domain: field.lab.eng.rdu.redhat.com
+      memory: 32GiB
+      type: server
+      storage_domain: nfs_data
+      cores: 8
+      high_availability: true
+      state: running
+      root_password: "{{ undercloud_root_password }}"
+      nics:
+      - name: nic1
+        network: ovirtmgmt
+        profile: ovirtmgmt
+      - name: nic2
+        network: osp-provisioning
+        profile: osp-provisioning
+
+    controller_vm:
+      cluster: Default
+      template: Blank
+      domain: field.lab.eng.rdu.redhat.com
+      memory: 48GiB
+      type: server
+      disks:
+        - size: 60GiB
+          name: controller_data
+          storage_domain: nfs_data
+          interface: virtio
+      cores: 16
+      storage_domain: nfs_data
+      high_availability: true
+      state: present
+      root_password: 'redhat'
+      nics:
+        - name: nic1
+          network: osp-provisioning
+          profile: osp-provisioning
+        - name: nic2
+          network: ovirtmgmt
+          profile: ovirtmgmt
+        - name: nic3
+          network: osp-internal
+          profile: osp-internal
+        - name: nic4
+          network: osp-tenant
+          profile: osp-tenant
+        - name: nic5
+          network: osp-storage
+          profile: osp-storage
+        - name: nic6
+          network: osp-storagemgmt
+          profile: osp-storagemgmt
+
+    compute_vm:
+      cluster: Default
+      template: Blank
+      domain: field.lab.eng.rdu.redhat.com
+      memory: 32GiB
+      type: server
+      disks:
+        - size: 60GiB
+          name: controller_data
+          storage_domain: nfs_data
+          interface: virtio
+      cores: 16
+      storage_domain: nfs_data
+      high_availability: true
+      state: present
+      root_password: 'redhat'
+      nics:
+      - name: nic1
+        network: osp-provisioning
+        profile: osp-provisioning
+      - name: nic2
+        network: ovirtmgmt
+        profile: ovirtmgmt
+      - name: nic3
+        network: osp-internal
+        profile: osp-internal
+      - name: nic4
+        network: osp-tenant
+        profile: osp-tenant
+      - name: nic5
+        network: osp-storage
+        profile: osp-storage
+      - name: nic6
+        network: osp-storagemgmt
+        profile: osp-storagemgmt
+
+    affinity_groups:
+      - name: controllers-negative
+        cluster: Default
+        vm_enforcing: false
+        vm_rule: negative
+        vms:
+          - my-controller-1
+          - my-controller-2
+          - my-controller-3
+
+    vms:
+      - name: "{{ undercloud_vm_name }}"
+        tag: undercloud-vm
+        profile: "{{ undercloud_vm }}"
+        nics:
+        - name: nic1
+          mac_address: "{{ undercould_primary_mac }}" 
+        - name: nic2
+          mac_address: "{{ undercould_secondery_mac }}"
+      - name: my-controller-1
+        tag: my-controller
+        profile: "{{ controller_vm }}"
+      - name: my-controller-2
+        tag: my-controller
+        profile: "{{ controller_vm }}"
+      - name: my-controller-3
+        tag: my-controller
+        profile: "{{ controller_vm }}"
+      - name: my-compute-1
+        tag: my-controller
+        profile: "{{ compute_vm }}"
+  
+  roles:
+    - oVirt.vm-infra
+  
+  tasks:
+    - name: Obtain SSO token with using username/password credentials #FIXME 
+      ovirt_auth:
+        url: "{{ engine_url }}" #https://your.rhvm.fqdn/ovirt-engine/api
+        username: "{{ engine_user }}" #admin@internal
+        password: "{{ engine_password }}" #changeMe
+
+    - name: Fetch Undercloud VM IP
+      ovirt_vms_facts:
+        auth: "{{ ovirt_auth }}"
+        pattern: name=my-undercloud
+        fetch_nested: true
+        nested_attributes: ips
+      register: vm_ip
+
+    - name: Create Undercloud group
+      add_host:
+        groups: undercloud_vm #FIXME change to vars
+        hostname: "{{ undercloud_ip }}"
+        ansible_host: "{{ undercloud_ip }}"
+        ansible_user: root #FIXME change to vars
+        ansible_password: "{{ undercloud_root_password }}"  #FIXME change to vars
+        ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+      changed_when: false
+
+- name: Setup Undercloud
+  hosts: "{{ undercloud_ip }}"
+  remote_user: stack
+
+  roles:
+    - oVirt.setup_undercloud

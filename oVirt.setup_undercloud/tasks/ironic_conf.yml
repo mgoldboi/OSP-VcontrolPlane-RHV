@@ -1,0 +1,26 @@
+---
+- name: Add staging-ovirt to enabled_hardware_types
+  ini_file:
+    path: /etc/ironic/ironic.conf
+    section: DEFAULT
+    option: enabled_hardware_types
+    value: redfish,ipmi,staging-ovirt
+
+- name: Add staging-ovirt to enabled_management_interfaces
+  ini_file:
+    path: /etc/ironic/ironic.conf
+    section: DEFAULT
+    option: enabled_management_interfaces
+    value: redfish,ilo,idrac,ipmitool,fake,staging-ovirt
+
+- name: Add staging-ovirt to enabled_power_interfaces
+  ini_file:
+    path: /etc/ironic/ironic.conf
+    section: DEFAULT
+    option: enabled_power_interfaces
+    value: redfish,ilo,idrac,ipmitool,fake,staging-ovirt
+
+- name: restart ironic-conductor
+  systemd:
+    state: restarted
+    name: openstack-ironic-conductor

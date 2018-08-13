@@ -1,0 +1,19 @@
+- debug:
+    msg: "VM {{ item.name}} is being added disk {{ item.disk_attachments[0].disk.id }}"
+
+- name: Register the RHV VMs disks
+  ovirt_disks:
+    auth: "{{ ovirt_auth }}"
+    id: "{{ item.disk_attachments[0].disk.id }}"
+  register: vm_disk
+
+- name: Append the Vm disk info
+  set_fact:
+    current_vm: "{{ item | combine(vm_disk) }}"
+
+- debug:
+    var: item
+
+- name: Register the VMs
+  set_fact:
+    osp_vms: "{{ osp_vms | default([]) }} + [{{ current_vm }}]"

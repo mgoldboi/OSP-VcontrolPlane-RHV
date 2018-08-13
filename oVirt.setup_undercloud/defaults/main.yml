@@ -1,0 +1,25 @@
+---
+list_of_packages:
+  - screen
+  - wget
+  - mlocate
+  - facter
+  - python-tripleoclient
+  - libvirt
+  - libguestfs-tools
+#   - openstack-utils
+  - sshpass
+  - crudini
+  - ceph-ansible
+  - rhosp-director-images
+  - python-ovirt-engine-sdk4
+
+rhsm_repos:
+  - rhel-7-server-extras-rpms
+  - rhel-7-server-openstack-12-rpms
+  - rhel-7-server-rh-common-rpms
+  - rhel-7-server-rpms
+  # FIXME: Remove once https://errata.devel.redhat.com/advisory/34080 is shipped.
+  - rhel-7-server-rhv-4.2-manager-rpms
+
+registered: false

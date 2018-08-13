@@ -1,0 +1,82 @@
+---
+- name: Check the distribution
+  fail:
+    msg: "Currently only RHEL is supported"
+  when: ansible_distribution != 'RedHat'
+
+- include_tasks: setup_stack_user.yml
+
+- include_tasks: rhsm_register.yml
+
+- include_tasks: repos_packages.yml
+  
+- name: Generate Undercloud.conf
+  template:
+    src: undercloud.conf.j2
+    dest: /home/stack/undercloud.conf
+    owner: stack
+    group: wheel
+    mode: 0644
+
+- name: Undercloud install
+  command: openstack undercloud install
+  args:
+    chdir: /home/stack/
+  become: yes
+  become_user: stack
+
+- name: Extract Director python agent images
+  command: tar -xvf /usr/share/rhosp-director-images/ironic-python-agent.tar -C ~/images/
+  become: yes
+  become_user: stack
+
+- name: Extract Director overcloud images
+  command: tar -xvf /usr/share/rhosp-director-images/overcloud-full.tar -C ~/images/
+  become: yes
+  become_user: stack
+
+- name: Run virt customize and set images root password
+  shell: "virt-customize -a ~/images/overcloud-full.qcow2 --root-password password:{{ controllers_root_password }}"
+  become: yes
+  become_user: stack
+
+- name: Upload overcloud images
+  shell: source /home/stack/stackrc && openstack overcloud image upload --image-path ~/images/
+  become: yes
+  become_user: stack
+
+- name: Obtain SSO token with using username/password credentials #FIXME 
+  ovirt_auth:
+    url: "{{ engine_url }}" #https://your.rhvm.fqdn/ovirt-engine/api
+    username: "{{ engine_user }}" #admin@internal
+    password: "{{ engine_password }}" #changeMe
+
+- name: Register the RHV VMs
+  ovirt_vms_facts:
+    auth: "{{ ovirt_auth }}"
+    pattern: tag=my-controller
+    fetch_nested: true
+    nested_attributes:
+      - disk
+      - mac
+
+- include_tasks: append_disk.yml
+  with_items:
+    - "{{ ovirt_vms }}"
+
+- name: Create instackenv template
+  template:
+    src: instackenv.json.j2
+    dest: /home/stack/instackenv.json
+
+- include_tasks: ironic_conf.yml
+
+- name: Import instackenv json file
+  shell: source /home/stack/stackrc && openstack overcloud node import /home/stack/instackenv.json
+  become: yes
+  become_user: stack
+
+- name: Introspect enviroment configuration
+  shell: source /home/stack/stackrc && openstack overcloud node introspect --all-manageable --provide
+  become: yes
+  become_user: stack

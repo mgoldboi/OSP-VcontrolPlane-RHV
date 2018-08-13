@@ -1,0 +1,27 @@
+---
+- name: Ensure group stack exists
+  group:
+    name: stack
+    state: present
+
+- name: Add stack superuser
+  user:
+    name: stack
+    groups: wheel,stack
+    password: $6$A8Pu/UFY0CyhRleo$WMdEZXVb4kCYTw.RHPC4fuvH/PNgNctJIsEvcJEWFJC8G2MOop7mHYtggjJ57k9v6lu8RwMknpnw4VjLdy3Nw/i
+
+- name: Allow 'wheel' group to have passwordless sudo
+  lineinfile:
+    dest: /etc/sudoers
+    state: present
+    regexp: '^%wheel'
+    line: '%wheel ALL=(ALL) NOPASSWD: ALL'
+    validate: 'visudo -cf %s'
+
+- name: Undercloud templates directory
+  file:
+    path: "/home/stack/{{ item }}"
+    state: directory
+    owner: stack
+    group: wheel
+  with_items: ["templates", "images"]

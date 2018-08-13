@@ -1,0 +1,25 @@
+---
+- name: Update system
+  yum:
+    name: '*'
+    state: latest
+  register: updated
+
+- name: Install packages
+  yum:
+    name: "{{ list_of_packages }}"
+    state: latest
+
+- block:
+  - name: Restart server
+    command: /sbin/shutdown -r
+    async: 0
+    poll: 0
+    ignore_errors: true
+
+  - name: Wait for the server to finish rebooting
+    wait_for:
+      host: "{{ inventory_hostname }}"
+      port: 22
+      delay: 10
+  when: updated.changed

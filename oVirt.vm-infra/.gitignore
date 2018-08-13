@@ -1,0 +1,8 @@
+*retry
+.tox
+*.tar.gz
+output/
+ovirt-ansible-vm-infra.spec
+exported-artifacts/
+.travis.yml
+automation.yaml 
